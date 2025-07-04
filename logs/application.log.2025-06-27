@@ -1,0 +1,1 @@
+{"timestamp": "2025-06-27 11:17:15", "logger": "uv_example", "level": "INFO", "message": "Mongodb Connection Sucessfull", "pathname": "D:\\1_Playground\\uv_example\\app\\db\\mongodb.py", "funcName": "initialise_mongo", "lineno": 23}
