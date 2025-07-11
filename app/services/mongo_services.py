@@ -47,7 +47,7 @@ class MongoService:
         try:
             result = await self.db[collection_name].insert_one(document)
             logger.info(f"Inserted document into '{collection_name}' with ID: {result.inserted_id}")
-            return {"inserted_id": str(result.inserted_id)}
+            return str(result.inserted_id)
 
         except DuplicateKeyError as e:
             logger.warning(f"Duplicate key error: {e}")

@@ -15,3 +15,5 @@ wheels/
 logs/
 
 notebooks/
+.vscode/
+.pytest_cache/

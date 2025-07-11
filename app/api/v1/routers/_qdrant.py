@@ -105,7 +105,7 @@ async def delete_qdrant_collection(
         return {"message": f"Failed to delete collection '{collection_name}'.", "status": "failure"}
 
 
-@router.post("/qdrant/ingest_data")
+# @router.post("/qdrant/ingest_data")
 async def ingest_qdrant_data(body : Ingestdata,
     qdrant_service: QdrantService = Depends(get_qdrant_service)
 ):

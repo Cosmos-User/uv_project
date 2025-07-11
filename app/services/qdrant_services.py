@@ -23,16 +23,19 @@ class QdrantService:
             logger.error(f"Error creating collection '{collection_name}': {e}", exc_info=True)
             return False
     
-    async def ingest_data(self, collection_name: str, documents: list[str], metadata: list[dict], ids: Optional[list[int]] = None):
+    # async def ingest_data(self, collection_name: str, payload: Dict, documents: list[str], metadata: Optional[list[dict]], ids: Optional[list[int]] = None):
+    async def ingest_data(self, collection_name: str, payload: Dict):
         try:
-            await self.client.add(
-                collection_name=collection_name,
-                documents=documents,
-                metadata=metadata,
-                ids=ids
-            )
-            logger.info(f"Successfully ingested data into collection '{collection_name}'.")
-            return True
+                documents = payload.get('documents')
+                metadata = payload.get('metadata')
+
+                await self.client.add(
+                    collection_name=collection_name,
+                    documents=documents,
+                    metadata=metadata
+                )
+                logger.info(f"Successfully ingested data into collection '{collection_name}'.")
+                return True
         except Exception as e:
             logger.error(f"Error ingesting data into collection '{collection_name}': {e}", exc_info=True)
             return False
