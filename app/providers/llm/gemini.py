@@ -2,7 +2,7 @@ from google import genai
 from fastapi import FastAPI
 from ...core.config import Settings, get_settings
 from ...core.logging import get_logger
-from typing import Optional
+
 
 logger = get_logger()
 

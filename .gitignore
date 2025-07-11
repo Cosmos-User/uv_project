@@ -9,5 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
+#environmental variables
 .env
 .env.example
+logs/
+
+notebooks/

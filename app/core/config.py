@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     gemini_api_key : str
     gemini_model : str
     gemini_rate_limit: int = 5
+    qdrant_url: str = "http://localhost:6333"
+    mongo_host_local : str
+    mongo_username_local: str
+    mongo_password_local: str
+    qdrant_sparse_model : str
+    qdrant_dense_model : str
 
     #reading environmental variables from .env file
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

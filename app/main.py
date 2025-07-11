@@ -6,10 +6,11 @@ from .core.logging import get_logger
 from .core import config
 import time
 from .db.mongodb import initialise_mongo, close_mongo_connection
+from .db.qdrantdb import initialise_qdrant, close_qdrant_connection
 from .api.v1.routers import file_upload,_mongo
 from .providers.llm.gemini import initialise_gemini
 from .schemas.error_response import ErrorResponse
-
+from .api.v1.routers import router as api_v1_router
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from opentelemetry import trace
@@ -36,10 +37,12 @@ logger = get_logger()
 async def lifespan(app : FastAPI):
     #starting script
     await initialise_mongo(app)
-    initialise_gemini(app) #initlaising the gemini_client 
+    initialise_gemini(app) 
+    await initialise_qdrant(app)
 
     yield
-
+    
+    await close_qdrant_connection(app)
     await close_mongo_connection(app)
     #closing script
 
@@ -52,9 +55,7 @@ app = FastAPI(lifespan=lifespan)
 # Instrument FastAPI for Prometheus metrics
 # Instrumentator().instrument(app).expose(app)
 
-app.include_router(file_upload.router)
-app.include_router(_mongo.router)
-
+app.include_router(api_v1_router, prefix="/api/v1")
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -99,9 +100,9 @@ async def processing_time(request: Request, call_next ):
     return response
     
 
-@app.post("/")
-async def main(settings: Annotated[config.Settings, Depends(config.get_settings)]):
-    return {"response" :f"{settings.app_name}"}
+# @app.post("/")
+# async def main(settings: Annotated[config.Settings, Depends(config.get_settings)]):
+#     return {"response" :f"{settings.app_name}"}
 
 
 

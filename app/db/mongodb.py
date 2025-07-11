@@ -11,25 +11,22 @@ logger = get_logger()
 
 async def initialise_mongo(app: FastAPI):
     settings= get_settings()
-    username = quote_plus(settings.mongo_username)
-    password = quote_plus(settings.mongo_password)
+    username = quote_plus(settings.mongo_username_local)
+    password = quote_plus(settings.mongo_password_local)
     database = settings.mongo_database
-    uri = f"mongodb://{username}:{password}@{settings.mongo_host}/{database}?retryWrites=true&w=majority"
-    local_uri = f"mongodb://localhost:27017/"
-    mongo_client = AsyncMongoClient(local_uri, server_api=ServerApi("1"),
+    uri = f"mongodb://{settings.mongo_host_local}/{database}?retryWrites=true&w=majority"
+    mongo_client = AsyncMongoClient(uri, server_api=ServerApi("1"),
                               maxPoolSize=20, minPoolSize=5)
-    local_database= "dl-uat"
     try:
         await mongo_client.admin.command("ping")
-        logger.info("Mongodb Connection Sucessfull")
+        logger.info("Mongodb Connection Successful")
 
     except PyMongoError as e:
         logger.error(f"Faile to connect to MongoDB : {e}")
         raise RuntimeError(f"Failed to connect to MongoDB: {e}")
     
     app.state.mongo_client = mongo_client
-    # app.state.db = mongo_client[database]
-    app.state.mongo_db = mongo_client[local_database]
+    app.state.mongo_db = mongo_client[database]
     
     return mongo_client[database]
 

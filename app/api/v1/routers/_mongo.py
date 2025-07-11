@@ -1,27 +1,49 @@
 from fastapi import APIRouter, Depends
-from pymongo.database import Database
-from ....services.mongo_services import create_collection_if_not_exists, insert_document, update_document, delete_document
-from ....utils.dependency import get_mongo_database
+from ....services.mongo_services import MongoService
+from ....utils.dependency import get_mongo_service, get_mongo_service
+from ....schemas.common import SuccessResponse
 
 router = APIRouter()
 
 
-@router.post('/create_collection')
-async def create_new_collection(collection_name: str,db: Database = Depends(get_mongo_database)):
-        collection = await create_collection_if_not_exists(collection_name, db=db)
-        return {
-            "message": f"Collection '{collection_name}' is ready.",
-            "collection": collection.name
-        }
+@router.post('/mongo/create_collection', response_model=SuccessResponse)
+async def create_new_collection(collection_name: str, mongo_service: MongoService = Depends(get_mongo_service)):
+        collection, created = await mongo_service.create_collection_if_not_exists(collection_name)
+        message = f"Collection '{collection_name}' is ready."
+        if created:
+            message = f"Collection '{collection_name}' created successfully."
+        else:
+            message = f"Collection '{collection_name}' already exists."
+        return SuccessResponse(
+            message=message,
+            data={
+                "collection": collection.name,
+                "created": created
+            }
+        )
 
-@router.post("/create_document")
-async def insert_data(collection_name: str, document: dict, db: Database = Depends(get_mongo_database)):
-    return await insert_document(collection_name, document, db)
+@router.post("/mongo/create_document", response_model=SuccessResponse)
+async def insert_data(collection_name: str, document: dict, mongo_service: MongoService = Depends(get_mongo_service)):
+    result = await mongo_service.insert_document(collection_name, document)
+    return SuccessResponse(
+        message="Document inserted successfully.",
+        data=result
+    )
 
-@router.put("/update_document")
-async def update_data(collection_name: str, filter: dict, update_data: dict, db: Database = Depends(get_mongo_database)):
-    return await update_document(collection_name, filter, update_data, db)
+@router.put("/mongo/update_document", response_model=SuccessResponse)
+async def update_data(collection_name: str, filter: dict, update_data: dict, mongo_service: MongoService = Depends(get_mongo_service)):
+    result = await mongo_service.update_document(collection_name, filter, update_data)
+    return SuccessResponse(
+        message="Document updated successfully.",
+        data=result
+    )
 
-@router.delete("/delete_document")
-async def delete_data(collection_name: str, filter: dict, db: Database = Depends(get_mongo_database)):
-    return await delete_document(collection_name, filter, db)
+@router.delete("/mongo/delete_document", response_model=SuccessResponse)
+async def delete_data(collection_name: str, filter: dict, mongo_service: MongoService = Depends(get_mongo_service)):
+    result = await mongo_service.delete_document(collection_name, filter)
+    return SuccessResponse(
+        message="Document deleted successfully.",
+        data=result
+    )
+
+
