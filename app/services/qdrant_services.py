@@ -1,5 +1,8 @@
-from qdrant_client import AsyncQdrantClient, models, QdrantClient
-from qdrant_client.http.models import VectorParams, SparseVectorParams
+from datetime import datetime
+from qdrant_client import AsyncQdrantClient, models
+from qdrant_client.models import Filter, FieldCondition, DatetimeRange
+from ..schemas.qdrant_payload_schema import COLLECTION_PAYLOAD_INDEX_CONFIG
+from ..utils.helper import get_index_param
 from ..core.logging import get_logger
 from typing import List, Dict, Any, Optional
 
@@ -42,7 +45,8 @@ class QdrantService:
     
     async def create_collection(
         self,
-        collection_name: str
+        collection_name: str,
+        **kwargs: Any
     ):
         try:
             colls = await self.client.get_collections()
@@ -53,13 +57,22 @@ class QdrantService:
             await self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=self.client.get_fastembed_vector_params(),
-                sparse_vectors_config=self.client.get_fastembed_sparse_vector_params(on_disk=True)
+                sparse_vectors_config=self.client.get_fastembed_sparse_vector_params(on_disk=True),                
             )
-            logger.info(f"Hybrid collection '{collection_name}' created successfully.")
+
+            schema = COLLECTION_PAYLOAD_INDEX_CONFIG.get(collection_name)
+            if schema:
+                for field, field_type in schema.items():
+                    await self.client.create_payload_index(
+                        collection_name=collection_name,
+                        field_name=field,
+                        field_schema=get_index_param(field_type)
+                    )
+            logger.info(f"collection '{collection_name}' created successfully.")
             return True
 
         except Exception as e:
-            logger.error(f"Error creating hybrid collection '{collection_name}': {e}", exc_info=True)
+            logger.error(f"Error creating collection '{collection_name}': {e}", exc_info=True)
             return False
         
     async def upsert_points(self, collection_name: str, points: List[models.PointStruct], wait: bool = True):
@@ -136,3 +149,22 @@ class QdrantService:
         except Exception as e:
             logger.error(f"Error deleting collection '{collection_name}': {e}", exc_info=True)
             return False
+
+    async def search_collection(self, collection_name, query, from_date, to_date):
+            try:
+                conditions = []
+                if from_date or to_date:
+                    conditions.append(FieldCondition(
+                        key="uploaded_date", 
+                        range=DatetimeRange(gte=from_date, lte=to_date)
+                    ))
+                search_result = await self.client.query(
+                                collection_name=collection_name,
+                                query_text=query,
+                                query_filter=Filter(must=conditions) if conditions else None
+                                )
+                
+                return search_result
+            except Exception as e:
+                logger.error(f"Error Searching collection '{collection_name}': {e}", exc_info=True)
+                return False

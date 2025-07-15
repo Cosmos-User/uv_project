@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, Depends
 from fastapi.exceptions import HTTPException
 from ....constants import MAX_FILE_SIZE
@@ -15,17 +16,18 @@ from ....schemas.common import SuccessResponse
 router = APIRouter()
 logger = get_logger()
 
-@router.post("/upload_file", response_model=SuccessResponse)
+@router.post("/upload", response_model=SuccessResponse)
 async def upload_file(
     collection_name: str = Form(...),
     file: UploadFile = File(...),
     prompt_manager: PromptManager = Depends(get_prompt_manager),
     gemini_client: GeminiClient = Depends(get_gemini_client),
     mongo_service: MongoService = Depends(get_mongo_service),
-    qdrant_service : QdrantService = Depends(get_qdrant_service)
+    qdrant_service : QdrantService = Depends(get_qdrant_service),
+    page_by_page: Optional[bool] = True
 ):
-    inserted_id = None  # Initialize inserted_id
-    current_datetime = datetime.now() # Set datetime inside the function
+    inserted_id = None
+    current_datetime = datetime.now(timezone.utc)
 
     try:
         file_content = await file.read()
@@ -60,49 +62,47 @@ async def upload_file(
 
             try:
                 inserted_id = await mongo_service.insert_document(collection_name, mongo_payload)
-
-                if inserted_id:
-                    qdrant_payload = {
-                        "documents": [processed_content],
-                        "metadata": [{"uploaded_date" :current_datetime,
-                            "filename": file.filename,
-                            "document_id":inserted_id}]
-                         #this is a mongo id setting this as point id for qdrant
-                    }                
-                    try:
-                        status = await qdrant_service.ingest_data(collection_name, qdrant_payload)
-
-                        if status:
-                            return SuccessResponse(
-                                message="File uploaded successfully",
-                                data={
-                                    "collection_name": collection_name,
-                                    "filename": file.filename,
-                                    "file_size": f"{file_size / (1024*1024):.2f}MB",
-                                    "content_type": file.content_type
-                                }
-                            )
-                        else:
-                            await mongo_service.delete_document(collection_name, inserted_id)
-                            logger.error(f"Qdrant insertion failed. Rolling back MongoDB insertion with id: {inserted_id}")
-                            raise HTTPException(
-                                status_code=500,
-                                detail="Failed to ingest data into Qdrant. MongoDB insertion rolled back."
-                            )
-                    except Exception as qdrant_error:
-                        await mongo_service.delete_document(collection_name, inserted_id)
-                        logger.error(f"Qdrant insertion failed. Rolling back MongoDB insertion with id: {inserted_id}. Error: {qdrant_error}")
-                        raise HTTPException(
-                            status_code=500,
-                            detail=f"Failed to ingest data into Qdrant. MongoDB insertion rolled back. Error: {qdrant_error}"
-                        )
+            
             except Exception as e:
                 logger.error(f"Exception Occurred During MongoDB insertion operation: {e}", exc_info=True)
                 raise HTTPException(
                     status_code=500,
                     detail="Failed to save processed document to database."
                 )
-        
+            
+            if inserted_id:
+                qdrant_payload = {
+                    "documents": [processed_content],
+                    "metadata": [{"uploaded_date" :current_datetime,
+                        "filename": file.filename,
+                        "document_id":inserted_id}]
+                    }                
+            try:
+                status = await qdrant_service.ingest_data(collection_name, qdrant_payload)
+
+                if status:
+                    return SuccessResponse(
+                        message="File uploaded successfully",
+                        data={
+                            "collection_name": collection_name,
+                            "filename": file.filename,
+                            "file_size": f"{file_size / (1024*1024):.2f}MB",
+                            "content_type": file.content_type
+                        }
+                    )
+            except Exception as qdrant_error:
+                try:
+                    await mongo_service.delete_document(collection_name, inserted_id)
+                except Exception as mongo_error:
+                    raise HTTPException(
+                        status_code=500,
+                        detail = f"MongoDB insertion rolled back. Error"
+                    )
+                logger.error(f"Qdrant insertion failed. Rolling back MongoDB insertion with id: {inserted_id}. Error: {qdrant_error}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to ingest data into Qdrant. MongoDB insertion rolled back. Error: {qdrant_error}"
+                )                    
         else:
             logger.error("No content processed or document not inserted.")
             raise HTTPException(

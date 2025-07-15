@@ -1,9 +1,7 @@
 from contextlib import asynccontextmanager
-from typing import Annotated
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from .core.logging import get_logger
-from .core import config
 import time
 from .db.mongodb import initialise_mongo, close_mongo_connection
 from .db.qdrantdb import initialise_qdrant, close_qdrant_connection

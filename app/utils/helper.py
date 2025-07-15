@@ -2,6 +2,10 @@ import magic
 import os
 from ..constants import ALLOWED_MIMETYPES, MAX_FILE_SIZE
 from ..core.logging import get_logger
+from qdrant_client.models import (
+    PayloadSchemaType,
+    TextIndexParams, KeywordIndexParams, DatetimeIndexParams, DatetimeIndexType, KeywordIndexType, TextIndexType
+)
 
 logger = get_logger()
 
@@ -33,3 +37,15 @@ def validate_file_size(file_size: int) -> bool:
     Validate file size against maximum allowed size
     """
     return file_size <= MAX_FILE_SIZE
+
+
+def get_index_param(payload_type: PayloadSchemaType):
+    match payload_type:
+        case PayloadSchemaType.KEYWORD:
+            return KeywordIndexParams(type=KeywordIndexType.KEYWORD)
+        case PayloadSchemaType.TEXT:
+            return TextIndexParams(type=TextIndexType.TEXT)
+        case PayloadSchemaType.DATETIME:
+            return DatetimeIndexParams(type=DatetimeIndexType.DATETIME)
+        case _:
+            return None

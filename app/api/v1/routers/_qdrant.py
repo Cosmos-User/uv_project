@@ -3,7 +3,7 @@ from qdrant_client import models
 from typing import List, Optional
 from ....services.qdrant_services import QdrantService
 from ....utils.dependency import get_qdrant_service
-from ....schemas.qdrant_validations import Ingestdata
+from ....schemas.qdrant_validations import Ingestdata, SearchRequest
 from ....core.logging import get_logger
 
 logger = get_logger()
@@ -111,11 +111,38 @@ async def ingest_qdrant_data(body : Ingestdata,
 ):
     try:
         collection_name = body.collection_name
-        documents = body.documents
-        metadata = body.metadata
-        ids = body.ids
-        success = await qdrant_service.ingest_data(collection_name=collection_name, documents=documents, metadata=metadata, ids=ids)
+        qdrant_payload = {
+            "documents" : body.documents,
+            "metadata " : body.metadata
+        }
+        success = await qdrant_service.ingest_data(collection_name, qdrant_payload)
         return {"message": f"Data ingested successfully into collection '{collection_name}'.", "status": "success"}
     except Exception as e:
         logger.error(f"Failed to ingest data into collection '{collection_name}'. Error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to ingest data into collection '{collection_name}'. Error: {e}")
+
+@router.post("/qdrant/search")
+async def search(body: SearchRequest,
+            qdrant_service_client: QdrantService = Depends(get_qdrant_service)):
+    try:
+        collection_name = body.collection_name
+        query = body.query
+        from_date = body.from_date
+        to_date = body.to_date
+        
+        search_response = await qdrant_service_client.search_collection(collection_name, query, from_date, to_date)
+        if search_response:
+            return {
+                    "Results":search_response ,
+                    "status": "success"
+                }
+        else:
+            return {
+                    "message": f"Failed to Qdrant hybrid collection '{collection_name}'.",
+                    "status": "failure"
+                }
+        
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch records from '{collection_name}'. Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch records from '{collection_name}'. Error: {e}")
