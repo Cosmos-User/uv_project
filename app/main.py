@@ -7,10 +7,10 @@ from .db.mongodb import initialise_mongo, close_mongo_connection
 from .db.qdrantdb import initialise_qdrant, close_qdrant_connection
 from .api.v1.routers import file_upload,_mongo
 from .providers.llm.gemini import initialise_gemini
+from .providers.llm.openai import initialise_azure_openai
 from .schemas.error_response import ErrorResponse
 from .api.v1.routers import router as api_v1_router
 from prometheus_fastapi_instrumentator import Instrumentator
-
 from opentelemetry import trace
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -37,6 +37,7 @@ async def lifespan(app : FastAPI):
     await initialise_mongo(app)
     initialise_gemini(app) 
     await initialise_qdrant(app)
+    initialise_azure_openai(app)
 
     yield
     

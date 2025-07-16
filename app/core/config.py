@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     mongo_password_local: str
     qdrant_sparse_model : str
     qdrant_dense_model : str
+    azure_openai_api_key : str
+    azure_openai_endpoint : str
+    azure_openai_model : str
+    azure_openai_api_version : str
 
     #reading environmental variables from .env file
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
